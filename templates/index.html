@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>賓果分析儀表板</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body {
+    margin: 0;
+    background: #0e0e0e;
+    color: white;
+    font-family: Arial;
+    text-align: center;
+}
+
+button {
+    width: 90%;
+    padding: 12px;
+    margin: 5px;
+    background: orange;
+    border: none;
+    font-size: 16px;
+}
+
+input {
+    width: 60px;
+}
+
+canvas {
+    margin: 10px;
+}
+</style>
+</head>
+
+<body>
+
+<h2>🎯 賓果數據儀表板</h2>
+
+<input type="number" id="count" value="5" min="1" max="10">
+
+<button onclick="runSim()">🚀 1000次回測</button>
+<button onclick="loadDrift()">📉 前20期偏移</button>
+
+<div id="result"></div>
+
+<canvas id="chart"></canvas>
+<canvas id="driftChart"></canvas>
+
+<script>
+
+// =========================
+// 1000次回測
+// =========================
+function runSim() {
+
+    fetch("/simulate", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+            count: document.getElementById("count").value
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+
+        document.getElementById("result").innerHTML =
+            "🎯 推薦號碼：" + data.numbers.join(", ") +
+            "<br>📊 勝率：" + data.win_rate + "%";
+
+    });
+}
+
+
+// =========================
+// 偏移分析
+// =========================
+function loadDrift() {
+
+    fetch("/drift")
+    .then(r => r.json())
+    .then(data => {
+
+        let labels = Object.keys(data);
+        let values = Object.values(data);
+
+        new Chart(document.getElementById("driftChart"), {
+            type: "bar",
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: "Z-score偏移",
+                    data: values
+                }]
+            }
+        });
+    });
+}
+
+</script>
+
+</body>
+</html>
