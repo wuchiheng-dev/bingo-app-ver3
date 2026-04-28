@@ -2,104 +2,53 @@
 <html>
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-
-<title>賓果分析儀表板</title>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<style>
-body {
-    margin: 0;
-    background: #0e0e0e;
-    color: white;
-    font-family: Arial;
-    text-align: center;
-}
-
-button {
-    width: 90%;
-    padding: 12px;
-    margin: 5px;
-    background: orange;
-    border: none;
-    font-size: 16px;
-}
-
-input {
-    width: 60px;
-}
-
-canvas {
-    margin: 10px;
-}
-</style>
+<title>賓果選號</title>
 </head>
 
 <body>
 
-<h2>🎯 賓果數據儀表板</h2>
+<h2>🎯 賓果賓果選號</h2>
 
-<input type="number" id="count" value="5" min="1" max="10">
+<select id="count">
+  <option value="1">1個</option>
+  <option value="2">2個</option>
+  <option value="3">3個</option>
+  <option value="4">4個</option>
+  <option value="5">5個</option>
+  <option value="6">6個</option>
+  <option value="7">7個</option>
+  <option value="8">8個</option>
+  <option value="9">9個</option>
+  <option value="10">10個</option>
+</select>
 
-<button onclick="runSim()">🚀 1000次回測</button>
-<button onclick="loadDrift()">📉 前20期偏移</button>
+<br><br>
 
-<div id="result"></div>
+<button onclick="pick()">產生號碼</button>
 
-<canvas id="chart"></canvas>
-<canvas id="driftChart"></canvas>
+<h3 id="result"></h3>
 
 <script>
+function pick() {
 
-// =========================
-// 1000次回測
-// =========================
-function runSim() {
+    let count = document.getElementById("count").value;
 
-    fetch("/simulate", {
+    fetch("/pick", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({
-            count: document.getElementById("count").value
-        })
+        body: JSON.stringify({count: count})
     })
-    .then(r => r.json())
+    .then(res => res.json())
     .then(data => {
-
-        document.getElementById("result").innerHTML =
-            "🎯 推薦號碼：" + data.numbers.join(", ") +
-            "<br>📊 勝率：" + data.win_rate + "%";
-
+        document.getElementById("result").innerText =
+            "星期：" + data.weekday +
+            " | 號碼：" + data.numbers.join(", ");
+    })
+    .catch(err => {
+        alert("錯誤");
+        console.log(err);
     });
 }
-
-
-// =========================
-// 偏移分析
-// =========================
-function loadDrift() {
-
-    fetch("/drift")
-    .then(r => r.json())
-    .then(data => {
-
-        let labels = Object.keys(data);
-        let values = Object.values(data);
-
-        new Chart(document.getElementById("driftChart"), {
-            type: "bar",
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: "Z-score偏移",
-                    data: values
-                }]
-            }
-        });
-    });
-}
-
 </script>
 
 </body>

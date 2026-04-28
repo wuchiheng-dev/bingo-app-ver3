@@ -1,129 +1,69 @@
 from flask import Flask, render_template, request, jsonify
-import requests
-from bs4 import BeautifulSoup
-from collections import Counter
 import random
-import math
+import datetime
+from collections import Counter
 
 app = Flask(__name__)
 
-HEADERS = {"User-Agent": "Mozilla/5.0"}
+# =========================
+# 模擬抓2000筆資料
+# =========================
+def get_data():
+    data = []
+    for _ in range(2000):
+        data.append(random.sample(range(1, 81), 20))
+    return data
 
 # =========================
-# 抓200期
+# 星期過濾
 # =========================
-def fetch_history(limit=200):
-    url = "https://nx4.988cp.net/history?g=BingoBingo"
-    try:
-        res = requests.get(url, headers=HEADERS, timeout=5)
-        soup = BeautifulSoup(res.text, "html.parser")
-
-        draws = []
-        for row in soup.select("div, tr"):
-            nums = [int(x) for x in row.get_text().split() if x.isdigit()]
-            if len(nums) == 20:
-                draws.append(nums)
-            if len(draws) >= limit:
-                return draws[:limit]
-    except:
-        pass
-
-    return [[i for i in range(1, 21)]] * limit
-
+def filter_weekday(data):
+    weekday = datetime.datetime.now().weekday()
+    return [d for i, d in enumerate(data) if i % 7 == weekday]
 
 # =========================
-# 建權重
+# 統計權重
 # =========================
-def build_weights(draws):
+def build_weights(data):
     c = Counter()
-    for d in draws:
+    for d in data:
         c.update(d)
     return {i: c[i] + 1 for i in range(1, 81)}
 
-
 # =========================
-# 選號策略
+# 選號
 # =========================
 def pick_numbers(weights, count):
     nums = list(weights.keys())
     w = list(weights.values())
-
     result = set()
+
     while len(result) < count:
         result.add(random.choices(nums, weights=w, k=1)[0])
 
-    return list(result)
-
-
-# =========================
-# 🎯 1000次回測（核心）
-# =========================
-def backtest(strategy_nums, history):
-    wins = 0
-    trials = 1000
-
-    for _ in range(trials):
-        draw = random.choice(history)  # 模擬一期
-
-        hit = len(set(strategy_nums) & set(draw))
-
-        # 命中>=3算成功（可調）
-        if hit >= 3:
-            wins += 1
-
-    return round(wins / trials * 100, 2)
-
+    return sorted(result)
 
 # =========================
-# API：選號 + 回測
+# API
 # =========================
-@app.route("/simulate", methods=["POST"])
-def simulate():
-
+@app.route("/pick", methods=["POST"])
+def pick():
     count = int(request.json["count"])
 
-    history = fetch_history(200)
-    weights = build_weights(history)
+    data = get_data()
+    data = filter_weekday(data)
+    weights = build_weights(data)
 
-    nums = pick_numbers(weights, count)
-
-    win_rate = backtest(nums, history)
+    result = pick_numbers(weights, count)
 
     return jsonify({
-        "numbers": nums,
-        "win_rate": win_rate
+        "numbers": result,
+        "weekday": datetime.datetime.now().strftime("%A")
     })
-
-
-# =========================
-# 前20期偏移（簡化）
-# =========================
-@app.route("/drift")
-def drift():
-
-    data = fetch_history(20)
-
-    c = Counter()
-    for d in data:
-        c.update(d)
-
-    exp = (20 * 20) / 80
-
-    result = {}
-
-    for i in range(1, 81):
-        obs = c[i]
-        z = (obs - exp) / (math.sqrt(exp) + 1e-6)
-
-        result[i] = z
-
-    return jsonify(result)
-
 
 @app.route("/")
 def index():
     return render_template("index.html")
-
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
